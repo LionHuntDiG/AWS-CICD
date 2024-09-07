@@ -2,34 +2,51 @@
 
 set -e
 
-CATALINA_HOME='/usr/share/tomcat7-codedeploy'
+CATALINA_HOME='/usr/share/tomcat9-codedeploy'
 DEPLOY_TO_ROOT='true'
-#CONTEXT_PATH='##CONTEXT_PATH##'
 SERVER_HTTP_PORT='80'
 
 TEMP_STAGING_DIR='/tmp/codedeploy-deployment-staging-area'
 WAR_STAGED_LOCATION="$TEMP_STAGING_DIR/SampleMavenTomcatApp.war"
 HTTP_PORT_CONFIG_XSL_LOCATION="$TEMP_STAGING_DIR/configure_http_port.xsl"
 
-# In Tomcat, ROOT.war maps to the server root
-if [[ "$DEPLOY_TO_ROOT" = 'true' ]]; then
+# Determine the context path for deployment
+if [[ "$DEPLOY_TO_ROOT" == 'true' ]]; then
     CONTEXT_PATH='ROOT'
+else
+    CONTEXT_PATH=${CONTEXT_PATH:-'SampleMavenTomcatApp'}
 fi
 
-# Remove unpacked application artifacts
-if [[ -f $CATALINA_HOME/webapps/$CONTEXT_PATH.war ]]; then
-    rm $CATALINA_HOME/webapps/$CONTEXT_PATH.war
-fi
-if [[ -d $CATALINA_HOME/webapps/$CONTEXT_PATH ]]; then
-    rm -rfv $CATALINA_HOME/webapps/$CONTEXT_PATH
+# Remove any existing WAR file or unpacked application in the webapps directory
+if [[ -f "$CATALINA_HOME/webapps/$CONTEXT_PATH.war" ]]; then
+    echo "Removing existing WAR file: $CATALINA_HOME/webapps/$CONTEXT_PATH.war"
+    rm -f "$CATALINA_HOME/webapps/$CONTEXT_PATH.war"
 fi
 
-# Copy the WAR file to the webapps directory
-cp $WAR_STAGED_LOCATION $CATALINA_HOME/webapps/$CONTEXT_PATH.war
+if [[ -d "$CATALINA_HOME/webapps/$CONTEXT_PATH" ]]; then
+    echo "Removing existing unpacked application directory: $CATALINA_HOME/webapps/$CONTEXT_PATH"
+    rm -rf "$CATALINA_HOME/webapps/$CONTEXT_PATH"
+fi
 
-# Configure the Tomcat server HTTP connector
-{ which xsltproc; } || { yum install xsltproc; } || { apt-get install xsltproc; }
-cp $CATALINA_HOME/conf/server.xml $CATALINA_HOME/conf/server.xml.bak
-xsltproc $HTTP_PORT_CONFIG_XSL_LOCATION $CATALINA_HOME/conf/server.xml.bak > $CATALINA_HOME/conf/server.xml
+# Copy the new WAR file to the Tomcat webapps directory
+echo "Deploying new WAR file to: $CATALINA_HOME/webapps/$CONTEXT_PATH.war"
+cp "$WAR_STAGED_LOCATION" "$CATALINA_HOME/webapps/$CONTEXT_PATH.war"
 
-service tomcat7 start
+# Install xsltproc if not present
+if ! command -v xsltproc &> /dev/null; then
+    echo "Installing xsltproc..."
+    sudo yum install -y xsltproc
+fi
+
+# Backup the original server.xml file
+cp "$CATALINA_HOME/conf/server.xml" "$CATALINA_HOME/conf/server.xml.bak"
+
+# Use xsltproc to configure the HTTP connector in the server.xml file
+echo "Configuring Tomcat HTTP connector to use port: $SERVER_HTTP_PORT"
+xsltproc "$HTTP_PORT_CONFIG_XSL_LOCATION" "$CATALINA_HOME/conf/server.xml.bak" > "$CATALINA_HOME/conf/server.xml"
+
+# Restart Tomcat to apply changes
+echo "Starting Tomcat..."
+sudo service tomcat9 start
+
+echo "Deployment completed successfully."
