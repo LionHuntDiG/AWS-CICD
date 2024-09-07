@@ -2,20 +2,20 @@
 
 set -e
 
-CATALINA_HOME=/usr/share/tomcat7-codedeploy
-TOMCAT_VERSION=7.0.77
+CATALINA_HOME=/usr/share/tomcat9-codedeploy
+TOMCAT_VERSION=9.0.73  # Latest Tomcat 9 version
 
 # Tar file name
-TOMCAT7_CORE_TAR_FILENAME="apache-tomcat-$TOMCAT_VERSION.tar.gz"
-# Updated Download URL for Tomcat7 core
-TOMCAT7_CORE_DOWNLOAD_URL="https://archive.apache.org/dist/tomcat/tomcat-7/v$TOMCAT_VERSION/bin/$TOMCAT7_CORE_TAR_FILENAME"
+TOMCAT9_CORE_TAR_FILENAME="apache-tomcat-$TOMCAT_VERSION.tar.gz"
+# Updated Download URL for Tomcat9 core
+TOMCAT9_CORE_DOWNLOAD_URL="https://archive.apache.org/dist/tomcat/tomcat-9/v$TOMCAT_VERSION/bin/$TOMCAT9_CORE_TAR_FILENAME"
 # The top-level directory after unpacking the tar file
-TOMCAT7_CORE_UNPACKED_DIRNAME="apache-tomcat-$TOMCAT_VERSION"
+TOMCAT9_CORE_UNPACKED_DIRNAME="apache-tomcat-$TOMCAT_VERSION"
 
-# Check whether there exists a valid instance of Tomcat7 installed at the specified directory
+# Check whether there exists a valid instance of Tomcat9 installed at the specified directory
 if [[ -d $CATALINA_HOME ]]; then
-    if service tomcat7 status > /dev/null 2>&1; then
-        echo "Tomcat7 is already installed at $CATALINA_HOME. Skipping reinstallation."
+    if service tomcat9 status > /dev/null 2>&1; then
+        echo "Tomcat9 is already installed at $CATALINA_HOME. Skipping reinstallation."
         exit 0
     fi
 fi
@@ -29,60 +29,73 @@ mkdir -p $CATALINA_HOME
 # Install wget if not present
 if ! command -v wget &> /dev/null; then
     echo "Installing wget..."
-    sudo yum install -y wget 
+    sudo yum install -y wget
 fi
 
-# Download the latest Tomcat7 version
+# Download the latest Tomcat9 version
 cd /tmp
-echo "Downloading Tomcat from $TOMCAT7_CORE_DOWNLOAD_URL..."
-wget $TOMCAT7_CORE_DOWNLOAD_URL
+echo "Downloading Tomcat from $TOMCAT9_CORE_DOWNLOAD_URL..."
+wget $TOMCAT9_CORE_DOWNLOAD_URL
 
 # Remove any previous extracted directory
-if [[ -d /tmp/$TOMCAT7_CORE_UNPACKED_DIRNAME ]]; then
-    rm -rf /tmp/$TOMCAT7_CORE_UNPACKED_DIRNAME
+if [[ -d /tmp/$TOMCAT9_CORE_UNPACKED_DIRNAME ]]; then
+    rm -rf /tmp/$TOMCAT9_CORE_UNPACKED_DIRNAME
 fi
 
 # Extract the downloaded tar file
-tar xzf $TOMCAT7_CORE_TAR_FILENAME
+tar xzf $TOMCAT9_CORE_TAR_FILENAME
 
 # Copy over to the CATALINA_HOME
-cp -r /tmp/$TOMCAT7_CORE_UNPACKED_DIRNAME/* $CATALINA_HOME
+cp -r /tmp/$TOMCAT9_CORE_UNPACKED_DIRNAME/* $CATALINA_HOME
 
-# Install Java if not yet installed
+# Install Amazon Corretto 11 (Java 11) if not yet installed
 if ! command -v java &> /dev/null; then
-    echo "Installing Java..."
-    sudo yum install -y java-1.8.0-openjdk 
+    echo "Installing Amazon Corretto 11..."
+    sudo yum install -y java-11-amazon-corretto-headless
 fi
 
 # Create the service init.d script
-cat > /etc/init.d/tomcat7 <<'EOF'
+cat > /etc/init.d/tomcat9 << 'EOF'
 #!/bin/bash
-# description: Tomcat7 Start Stop Restart
-# processname: tomcat7
+# description: Tomcat9 Start Stop Restart
+# processname: tomcat9
+# chkconfig: 234 20 80
+# Provides: tomcat9
+
 PATH=$JAVA_HOME/bin:$PATH
 export PATH
-CATALINA_HOME='/usr/share/tomcat7-codedeploy'
+CATALINA_HOME='/usr/share/tomcat9-codedeploy'
 
 case $1 in
 start)
-sh $CATALINA_HOME/bin/startup.sh
-;;
+  echo "Starting Tomcat9..."
+  sh $CATALINA_HOME/bin/startup.sh
+  ;;
 stop)
-sh $CATALINA_HOME/bin/shutdown.sh
-;;
+  echo "Stopping Tomcat9..."
+  sh $CATALINA_HOME/bin/shutdown.sh
+  ;;
 restart)
-sh $CATALINA_HOME/bin/shutdown.sh
-sh $CATALINA_HOME/bin/startup.sh
-;;
+  echo "Restarting Tomcat9..."
+  sh $CATALINA_HOME/bin/shutdown.sh
+  sh $CATALINA_HOME/bin/startup.sh
+  ;;
+*)
+  echo "Usage: $0 {start|stop|restart}"
+  exit 1
+  ;;
 esac
 exit 0
 EOF
 
 # Change permission mode for the service script
-chmod 755 /etc/init.d/tomcat7
+chmod 755 /etc/init.d/tomcat9
 
-# Add Tomcat to system startup and start the service
-sudo chkconfig --add tomcat7 || sudo update-rc.d tomcat7 defaults
-sudo service tomcat7 start
+# Register the service using chkconfig
+sudo chkconfig --add tomcat9
+sudo chkconfig tomcat9 on
+
+# Start the Tomcat service
+sudo service tomcat9 start
 
 echo "Tomcat installation and setup complete."
