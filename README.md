@@ -9,3 +9,7 @@ wget https://aws-codedeploy-ap-south-1.s3.ap-south-1.amazonaws.com/latest/instal
 chmod +x ./install
 sudo ./install auto
 sudo service codedeploy-agent start
+
+Use ROLE : CodeDeploy-ec2-role
+
+sudo service codedeploy-agent restart
