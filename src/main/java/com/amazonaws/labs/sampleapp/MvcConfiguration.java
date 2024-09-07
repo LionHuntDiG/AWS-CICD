@@ -1,6 +1,5 @@
 package com.amazonaws.labs.sampleapp;
 
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -15,11 +14,11 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 import com.amazonaws.regions.Region;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.autoscaling.AmazonAutoScaling;
-import com.amazonaws.services.autoscaling.AmazonAutoScalingClient;
+import com.amazonaws.services.autoscaling.AmazonAutoScalingClientBuilder;
 import com.amazonaws.services.codedeploy.AmazonCodeDeploy;
-import com.amazonaws.services.codedeploy.AmazonCodeDeployClient;
+import com.amazonaws.services.codedeploy.AmazonCodeDeployClientBuilder;
 import com.amazonaws.services.ec2.AmazonEC2;
-import com.amazonaws.services.ec2.AmazonEC2Client;
+import com.amazonaws.services.ec2.AmazonEC2ClientBuilder;
 
 import java.io.IOException;
 
@@ -27,7 +26,9 @@ import java.io.IOException;
 @ComponentScan(basePackages = {"com.amazonaws.labs.sampleapp"})
 @Configuration
 public class MvcConfiguration extends WebMvcConfigurerAdapter {
-    private static Region region = Regions.getCurrentRegion();
+
+    // Set the region explicitly
+    private static final Region region = Region.getRegion(Regions.AP_SOUTH_1); // Explicitly set to ap-south-1
 
     @Override
     public void addResourceHandlers(final ResourceHandlerRegistry registry) {
@@ -51,23 +52,26 @@ public class MvcConfiguration extends WebMvcConfigurerAdapter {
 
     @Bean
     public AmazonCodeDeploy codeDeploy() {
-        final AmazonCodeDeploy client = new AmazonCodeDeployClient();
-        client.setRegion(region);
-        return client;
+        // Use the AmazonCodeDeployClientBuilder to create a client with the specified region
+        return AmazonCodeDeployClientBuilder.standard()
+                .withRegion(Regions.AP_SOUTH_1)
+                .build();
     }
 
     @Bean
     public AmazonEC2 ec2() {
-        final AmazonEC2 client = new AmazonEC2Client();
-        client.setRegion(region);
-        return client;
+        // Use the AmazonEC2ClientBuilder to create a client with the specified region
+        return AmazonEC2ClientBuilder.standard()
+                .withRegion(Regions.AP_SOUTH_1)
+                .build();
     }
     
     @Bean
     public AmazonAutoScaling autoScaling() {
-        AmazonAutoScaling client = new AmazonAutoScalingClient();
-        client.setRegion(region);
-        return client;
+        // Use the AmazonAutoScalingClientBuilder to create a client with the specified region
+        return AmazonAutoScalingClientBuilder.standard()
+                .withRegion(Regions.AP_SOUTH_1)
+                .build();
     }
 
     @Bean
