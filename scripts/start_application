@@ -34,8 +34,19 @@ cp "$WAR_STAGED_LOCATION" "$CATALINA_HOME/webapps/$CONTEXT_PATH.war"
 
 # Install xsltproc if not present
 if ! command -v xsltproc &> /dev/null; then
-    echo "Installing xsltproc..."
-    sudo yum install -y xsltproc
+    echo "Installing xsltproc from source..."
+    # Install required development tools and libraries
+    sudo dnf groupinstall -y "Development Tools"
+    sudo dnf install -y libxml2-devel libgcrypt-devel
+
+    # Download and install libxslt
+    cd /tmp
+    wget ftp://xmlsoft.org/libxml2/libxslt-1.1.34.tar.gz
+    tar -xzvf libxslt-1.1.34.tar.gz
+    cd libxslt-1.1.34
+    ./configure
+    make
+    sudo make install
 fi
 
 # Backup the original server.xml file
