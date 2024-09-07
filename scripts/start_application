@@ -47,10 +47,25 @@ if ! command -v xsltproc &> /dev/null; then
     ./configure
     make
     sudo make install
+
+    # Add /usr/local/bin to PATH if it's not already there
+    export PATH=$PATH:/usr/local/bin
 fi
 
 # Backup the original server.xml file
-cp "$CATALINA_HOME/conf/server.xml" "$CATALINA_HOME/conf/server.xml.bak"
+if [[ -f "$CATALINA_HOME/conf/server.xml" ]]; then
+    echo "Backing up the original server.xml file."
+    sudo cp "$CATALINA_HOME/conf/server.xml" "$CATALINA_HOME/conf/server.xml.bak"
+else
+    echo "Error: The original server.xml file does not exist."
+    exit 1
+fi
+
+# Verify the backup file is not empty
+if [[ ! -s "$CATALINA_HOME/conf/server.xml.bak" ]]; then
+    echo "Error: Backup file server.xml.bak is empty or not created properly."
+    exit 1
+fi
 
 # Use xsltproc to configure the HTTP connector in the server.xml file
 echo "Configuring Tomcat HTTP connector to use port: $SERVER_HTTP_PORT"
